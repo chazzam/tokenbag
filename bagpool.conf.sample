@@ -14,11 +14,16 @@
       ],
       "Base": [
          {
-            "Hit": 2,
-            "Bronze": 2,
-            "Miss": 2,
+            "Hit Red": 3,
+            "Bronze": 1,
+            "Silver": 1,
+            "Gold": 1,
+            "Miss": 4,
             "Hit Bronze": 1,
-            "Gobbler": 2,
+            "Hit Silver": 2,
+            "Hit Gold": 1,
+            "Miss Bronze": 1,
+            "Gobbler": 0,
             "Gobstopper": 1
          }
       ]
@@ -36,7 +41,8 @@
          "Can Flip": false,
          "Flipped": {
             "Can Flip": false
-         }
+         },
+         "Enable Crit": -1
       },
       "Hit": {
          "Sum Value": 1,
@@ -48,14 +54,17 @@
             -1,
             1
          ],
-         "Hit Value": 1,
+         "Hit Value": [
+            -1,
+            1
+         ],
          "Can Be Stolen": true,
          "Can Flip": true,
          "Flipped": {
             "Sum Value": 1,
             "Hit Value": 1,
             "Can Be Stolen": false,
-            "Min Rank": 1
+            "Min Rank": 0
          }
       },
       "Hit Bronze": {
@@ -87,7 +96,7 @@
          "Can Flip": true,
          "Flipped": {
             "Sum Value": 3,
-            "Hit Value": 1,
+            "Hit Value": 2,
             "Can Be Stolen": false,
             "Min Rank": 3
          }
@@ -95,17 +104,20 @@
       "Bronze": {
          "Sum Value": 1,
          "Hit Value": 1,
-         "Min Rank": 1
+         "Min Rank": 1,
+         "Enable Crit": 1
       },
       "Silver": {
-         "Sum Value": 1,
+         "Sum Value": 2,
          "Hit Value": 1,
-         "Min Rank": 2
+         "Min Rank": 2,
+         "Enable Crit": 2
       },
       "Gold": {
-         "Sum Value": 2,
+         "Sum Value": 3,
          "Hit Value": 2,
-         "Min Rank": 3
+         "Min Rank": 3,
+         "Enable Crit": 3
       },
       "Gobbler": {
          "Sum Value": 0,
@@ -114,7 +126,7 @@
          "Return to Bag": true
       },
       "Gobstopper Bronze": {
-         "Sum Value": 2,
+         "Sum Value": -2,
          "Hit Value": -2,
          "Ends Pulls": true,
          "Can Flip": true,
@@ -135,8 +147,8 @@
          "Hit Value": -1,
          "Can Flip": true,
          "Flipped": {
-            "Sum Value": 1,
-            "Hit Value": 1,
+            "Sum Value": 3,
+            "Hit Value": 2,
             "Min Rank": 3
          }
       },
@@ -145,7 +157,7 @@
          "Hit Value": -1,
          "Can Flip": true,
          "Flipped": {
-            "Sum Value": 1,
+            "Sum Value": 2,
             "Hit Value": 1,
             "Min Rank": 2
          }
