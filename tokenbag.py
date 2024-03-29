@@ -2,19 +2,21 @@
 #__version__ = '0.1.0'
 import copy
 import json
+
 #import os
 import logging
 import random
 
+
 class TokenBag:
-  def __init__(self, config_filename: str, bag_name:str, debug: bool, log:str, pulls:int) -> None:
-    self.config_filename = config_filename
+  def __init__(self, debug: bool, log:str) -> None:
+    self.config_filename = ""
     self.config = {}
-    self.bag_name = bag_name
     self.pool = {"bags": [], "tokens": {}}
     self.debug = debug
     self.logfile = log
-    self.max_pulls = pulls
+    self.bag_name = "Base"
+    self.max_draws = 10
 
     if debug:
       logging.basicConfig(
@@ -28,13 +30,26 @@ class TokenBag:
         filename=log,
         filemode='w',
         level=logging.DEBUG)
-    logger = logging.getLogger(__name__)
 
+  def read_config_file(self, config_filename: str) -> None:
+    self.config_filename = config_filename
     with open(config_filename) as f:
       self.config = json.load(f)
+      
+  def import_config_json(self, config_json: str) -> None:
+    self.config = config_json
 
+  def configure_pool(self, bag_name:str, max_draws:int, max_rank:int, sums:bool) -> None:
+    """TODO"""
+    self.bag_name = bag_name
+    self.max_draws = max_draws
+    self.max_rank = max_rank
+    self.sums = sums
+
+  def initialize_pool(self) -> None:
+    logger = logging.getLogger(__name__)
     if "Bag Pool" not in self.config or "Token Pool" not in self.config:
-      logger.error("No `Bag Pool` (or no `Token Pool`) specified in %s", self.config_filename)
+      logger.error("No `Bag Pool` (or no `Token Pool`) specified in config")
       return
     if self.bag_name not in self.config["Bag Pool"]:
       logger.error("Requested bag `%s` not found in Bag Pool", self.bag_name)
@@ -49,9 +64,9 @@ class TokenBag:
         "Can Latch": False,
         "Return to Bag": False,
         "Min Rank": 0,
-        "Ends Pulls": False,
+        "Ends Draws": False,
         "Can Flip": False,
-        "Enable Crit": 999,
+        "Enable Crit": -1,
         "Flipped": {
           "Can Flip": False
         }
@@ -94,7 +109,7 @@ class TokenBag:
           # These options are not supported after flipping
           fToken["Can Flip"] = False
           fToken["Can Steal"] = False
-          fToken["Can Be Stolen"] = False
+          #fToken["Can Be Stolen"] = False
           del fToken["Flipped"]
           token["Flipped"].update(fToken)
 
@@ -115,62 +130,42 @@ class TokenBag:
     vMiss = 0
     vSum = 0
 
-    if not isinstance(inHit, list):
-      if inHit > 0:
-        vHit += inHit
-      else:
-        vMiss += inHit
-    else:
-      # Handle looking up Min Rank to see where to start the value
-      i = rank - minRank
+    if not self.sums:
       vHitMiss = 0
-      if len(inHit) <= i:
-        # Can just take the last element
-        vHitMiss = inHit[-1]
+      if not isinstance(inHit, list):
+        vHitMiss = inHit
       else:
-        # Use i as the value index
-        vHitMiss = inHit[i]
+        # Possible i values: 0, 1, 2 with 4 ranks 0-3
+        # 0 = 1 - 1;
+        # 1 = 2 - 1; 0 = 2 - 2;
+        # 2 = 3 - 1; 1 = 3 - 2; 0 = 3 - 3
+        i = rank - minRank
+        vHitMiss = inHit[-1] if i >= len(inHit) else inHit[i]
       if vHitMiss > 0:
         vHit += vHitMiss
       else:
         vMiss += vHitMiss
-
-    # Handle Sums
-    if not isinstance(inSum, list):
-      vSum += inSum
     else:
-      # Handle looking up Min Rank to see where to start the value
-      i = rank - minRank
-      if len(inSum) <= i:
-        # Can just take the last element
-        vSum += inSum[-1]
+      # Handle Sums
+      if not isinstance(inSum, list):
+        vSum += inSum
       else:
-        # Use i as the value index
-        vSum += inSum[i]
-
+        # Handle looking up Min Rank to see where to start the value
+        i = rank - minRank
+        # If we want a position not in the list, take the last
+        # Otherwise take the requested position
+        vSum += inSum[-1] if i >= len(inSum) else inSum[i]
+  
     return (vHit, abs(vMiss), vSum)
 
-  def pull(self, rank:int, iBag:int) -> dict:
+  def pull(self, bag:int) -> list:
     """Evaluate a pull by bag indices"""
-    # Build initial pulls list by randomly shuffling the bag
-    bag = self.pool["bags"][iBag]
-    bag_size = len(bag)
-    pulls = list(range(bag_size))
-    random.shuffle(pulls)
-    canBeStolen = []
+    # Build initial pull list by randomly shuffling the bag
+    the_bag = self.pool["bags"][bag]
+    pull_orig = list(range(len(the_bag)))
+    random.shuffle(pull_orig)
 
-    rs = {
-      "rank": rank,
-      "pulls": 0,
-      "can-crit": "-",
-      "hits": 0,
-      "misses": 0,
-      "sum": 0,
-      "fortune-hits": 0,
-      "fortune-misses": 0,
-      "fortune-sum": 0,
-      "actual-pulls": []
-    }
+    pulls = []
 
     bHit = 0
     bMiss = 0
@@ -179,115 +174,158 @@ class TokenBag:
     fMiss = 0
     fSum = 0
 
-    pull_again = True
-    latched = False
-    while pull_again:
-      # Check if we hit the max token pull
-      if rs["pulls"] >= self.max_pulls:
-        break
-        
-      # Get the token definition
-      p = pulls.pop(0)
-      token = self.pool["tokens"][bag[p]]
-      rs["pulls"] += 1
-      rs["actual-pulls"].append(bag[p])
-
-      # Check rank compliance
-      minRank = token["Min Rank"]
-
-      if minRank > rank:
-        continue
-
-      if int(token["Enable Crit"]) >= int(rank):
-        rs["can-crit"] = "Y"
-        
-      bHit = 0
-      bMiss = 0
-      bSum = 0
-      fHit = 0
-      fMiss = 0
-      fSum = 0
-
-      # Handle Hits/Misses
-      (bHit, bMiss, bSum) = self._getHitMissSum(
-        rank,
-        minRank,
-        token["Hit Value"],
-        token["Sum Value"])
-      rs["hits"] += bHit
-      rs["misses"] += bMiss
-      rs["sum"] += bSum
-  
-      # Handle Flipped Hits/Misses/Sums
-      if token["Can Flip"] and rank >= token["Flipped"]["Min Rank"]:
-        (fHit, fMiss, fSum) = self._getHitMissSum(
-          rank,
-          token["Flipped"]["Min Rank"],
-          token["Flipped"]["Hit Value"],
-          token["Flipped"]["Sum Value"])
-        rs["fortune-hits"] += fHit
-        rs["fortune-misses"] += fMiss
-        rs["fortune-sum"] += fSum
-      else:
-        rs["fortune-hits"] += bHit
-        rs["fortune-misses"] += bMiss
-        rs["fortune-sum"] += bSum
-
-      # Handle Stealing
-      if token["Can Steal"]:
-        # Loop over all the prior pulls and see if they can be stolen
-        rStolen = copy.deepcopy(canBeStolen)
-        rStolen.reverse()
-        handledBaseSteal = False
-        baseToken = 0
-
-        for r in rStolen:
-          rToken = self.pool["tokens"][bag[r]]
-
-          if rToken["Can Be Stolen"] and not handledBaseSteal:
-            if rToken["Can Latch"] and latched:
-              latched = False
-            (bHit, bMiss, bSum) = self._getHitMissSum(
-              rank,
-              rToken["Min Rank"],
-              rToken["Hit Value"],
-              rToken["Sum Value"])
-            rs["hits"] -= bHit
-            rs["misses"] -= bMiss
-            rs["sum"] -= bSum
-            handledBaseSteal = True
-            baseToken = r
-            if not rToken["Can Flip"] or rToken["Flipped"]["Can Be Stolen"]:
-              rs["fortune-hits"] -= bHit
-              rs["fortune-misses"] -= bMiss
-              rs["fortune-sum"] -= bSum
-            break
-
-        if handledBaseSteal:
-            canBeStolen.remove(baseToken)
-
-      # Log that we pulled this one, now that we've processed the steals
-      if token["Can Be Stolen"] or (token["Can Flip"] and token["Flipped"]["Can Be Stolen"]):
-        canBeStolen.append(p)
-
-      if latched:
-        # TODO: Figure out a DSL for latching and check it here
-        # Probably need to make sure we check for a previous latch here above
-        # setting the latch
+    for draw_halt in range(1, self.max_draws + 1):  
+      firstPass = True
+      ranks = {
+        "draws": draw_halt,
+        "pull-order": [],
+        "ranks": []
+      }
+      replay_pull = []
+      #canBeStolenSaved = []
+      for rank in range(self.max_rank + 1):
+        the_pull = copy.deepcopy(pull_orig) if firstPass else copy.deepcopy(replay_pull)
+        draw_again = True
         latched = False
+        rank_draw = 0
+        rs = {
+          "rank": rank,
+          "can-crit": "-",
+          "hits": 0,
+          "misses": 0,
+          "sum": 0,
+          "fortune-hits": 0,
+          "fortune-misses": 0,
+          "fortune-sum": 0,
+        }
+        canBeStolen = []
 
-      # Handle returns
-      if token["Return to Bag"]:
-        # Add this back to the bag and re-shuffle
-        pulls.append(p)
-        random.shuffle(pulls)
+        while draw_again:
+          # Check if we hit the max token draw
+          if rank_draw >= draw_halt:
+            break
+            
+          # Get the token definition
+          p = the_pull.pop(0)
+          if firstPass:
+            # Build up our actual draw order after Steals for subsequent passes
+            replay_pull.append(p)
+            
+          token = self.pool["tokens"][the_bag[p]]
+          rank_draw += 1
+          if firstPass:
+            ranks["pull-order"].append(the_bag[p])
+    
+          # Check rank compliance
+          minRank = token["Min Rank"]
+    
+          if minRank > rank:
+            continue
+    
+          if int(token["Enable Crit"]) >= int(rank):
+            rs["can-crit"] = "Y"
+            
+          bHit = 0
+          bMiss = 0
+          bSum = 0
+          fHit = 0
+          fMiss = 0
+          fSum = 0
+    
+          # Handle Hits/Misses
+          (bHit, bMiss, bSum) = self._getHitMissSum(
+            rank,
+            minRank,
+            token["Hit Value"],
+            token["Sum Value"])
+          rs["hits"] += bHit
+          rs["misses"] += bMiss
+          rs["sum"] += bSum
+      
+          # Handle Flipped Hits/Misses/Sums
+          # FIXME: Hit Silver is giving fortune-hits to ranks 0 & 1.
+          if token["Can Flip"] and rank >= token["Flipped"]["Min Rank"]:
+            (fHit, fMiss, fSum) = self._getHitMissSum(
+              rank,
+              token["Flipped"]["Min Rank"],
+              token["Flipped"]["Hit Value"],
+              token["Flipped"]["Sum Value"])
+            rs["fortune-hits"] += fHit
+            rs["fortune-misses"] += fMiss
+            rs["fortune-sum"] += fSum
+          else:
+            rs["fortune-hits"] += bHit
+            rs["fortune-misses"] += bMiss
+            rs["fortune-sum"] += bSum
+    
+          # Handle Stealing
+          if token["Can Steal"]:
+            # Loop over all the prior pulls and see if they can be stolen
+            rStolen = copy.deepcopy(canBeStolen)
+            rStolen.reverse()
+            handledBaseSteal = False
+            baseToken = 0
+    
+            for r in rStolen:
+              rToken = self.pool["tokens"][the_bag[r]]
+    
+              if rToken["Can Be Stolen"] and not handledBaseSteal:
+                if rToken["Can Latch"] and latched:
+                  latched = False
+                (bHit, bMiss, bSum) = self._getHitMissSum(
+                  rank,
+                  rToken["Min Rank"],
+                  rToken["Hit Value"],
+                  rToken["Sum Value"])
+                rs["hits"] -= bHit
+                rs["misses"] -= bMiss
+                rs["sum"] -= bSum
+                handledBaseSteal = True
+                baseToken = r
+                if not rToken["Can Flip"] or rToken["Flipped"]["Can Be Stolen"]:
+                  rs["fortune-hits"] -= bHit
+                  rs["fortune-misses"] -= bMiss
+                  rs["fortune-sum"] -= bSum
+                break
+    
+            if handledBaseSteal:
+                canBeStolen.remove(baseToken)
+    
+          # Log that we pulled this one, now that we've processed the steals
+          if token["Can Be Stolen"] or (token["Can Flip"] and token["Flipped"]["Can Be Stolen"]):
+            canBeStolen.append(p)
+    
+          if latched:
+            # TODO: Figure out a DSL for latching and check it here
+            # Probably need to make sure we check for a previous latch here above
+            # setting the latch
+            latched = False
+    
+          # Handle returns
+          if token["Return to Bag"] and firstPass:
+            # Add this back to the bag and re-shuffle
+            # We only do this on the first pass, because we replay it afterward
+            the_pull.append(p)
+            random.shuffle(the_pull)
+    
+          # Placeholder for Latching
+          if token["Can Latch"]:
+            latched = True
 
-      # Placeholder for Latching
-      if token["Can Latch"]:
-        latched = True
+          # Check if token ends pulls
+          if token["Ends Draws"]:
+            break
+    
+        firstPass = False
+        if self.sums:
+          del rs["hits"]
+          del rs["misses"]
+          del rs["fortune-hits"]
+          del rs["fortune-misses"]
+        else:
+          del rs["sum"]
+          del rs["fortune-sum"]
+        ranks["ranks"].append(copy.deepcopy(rs))
+      pulls.append(copy.deepcopy(ranks))
 
-      # Check if token ends pulls
-      if token["Ends Pulls"]:
-        break
-
-    return rs
+    return pulls

@@ -55,11 +55,20 @@ def main():
       default="Base")
 
   args = parser.parse_args()
-  pool = TokenBag(args.config, args.bag, args.debug, args.log, args.pull_cap)
+  pool = TokenBag(args.debug, args.log)
+  pool.configure_pool(
+    bag_name=args.bag, 
+    max_draws=args.draw_cap,
+    max_rank=3,
+    sums=args.sums
+  )
+  pool.read_config_file(args.config)
+  pool.initialize_pool()
+  
   #print(pool.get_pool())
   print("\nRunning a pull")
   for i in range(args.number_of_draws):
-    print(pool.pull(args.rank, 0))
+    print(json.dumps(pool.pull(bag=0), indent=2))
 
 
 main()

@@ -37,7 +37,7 @@
          "Can Latch": false,
          "Return to Bag": false,
          "Min Rank": 0,
-         "Ends Pulls": false,
+         "Ends Draws": false,
          "Can Flip": false,
          "Flipped": {
             "Can Flip": false
@@ -63,7 +63,7 @@
          "Flipped": {
             "Sum Value": 1,
             "Hit Value": 1,
-            "Can Be Stolen": false,
+            "Can Be Stolen": true,
             "Min Rank": 0
          }
       },
@@ -105,19 +105,19 @@
          "Sum Value": 1,
          "Hit Value": 1,
          "Min Rank": 1,
-         "Enable Crit": 1
+         "Enable Crit":1
       },
       "Silver": {
          "Sum Value": 2,
          "Hit Value": 1,
          "Min Rank": 2,
-         "Enable Crit": 2
+         "Enable Crit":2
       },
       "Gold": {
          "Sum Value": 3,
          "Hit Value": 2,
          "Min Rank": 3,
-         "Enable Crit": 3
+         "Enable Crit":3
       },
       "Gobbler": {
          "Sum Value": 0,
@@ -128,19 +128,19 @@
       "Gobstopper Bronze": {
          "Sum Value": -2,
          "Hit Value": -2,
-         "Ends Pulls": true,
+         "Ends Draws": true,
          "Can Flip": true,
          "Flipped": {
             "Sum Value": 1,
             "Hit Value": 1,
             "Min Rank": 1,
-            "Ends Pulls": false
+            "Ends Draws": false
          }
       },
       "Gobstopper": {
          "Sum Value": -2,
          "Hit Value": -2,
-         "Ends Pulls": true
+         "Ends Draws": true
       },
       "Miss Gold": {
          "Sum Value": -1,
