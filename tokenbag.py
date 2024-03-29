@@ -12,7 +12,7 @@ class TokenBag:
     self.config = {}
     self.bag_name = bag_name
     self.pool = {"bags": [], "tokens": {}}
-    self.debug = False
+    self.debug = debug
     self.logfile = log
     self.max_pulls = pulls
 
@@ -51,6 +51,7 @@ class TokenBag:
         "Min Rank": 0,
         "Ends Pulls": False,
         "Can Flip": False,
+        "Enable Crit": 999,
         "Flipped": {
           "Can Flip": False
         }
@@ -161,6 +162,7 @@ class TokenBag:
     rs = {
       "rank": rank,
       "pulls": 0,
+      "can-crit": "-",
       "hits": 0,
       "misses": 0,
       "sum": 0,
@@ -180,6 +182,10 @@ class TokenBag:
     pull_again = True
     latched = False
     while pull_again:
+      # Check if we hit the max token pull
+      if rs["pulls"] >= self.max_pulls:
+        break
+        
       # Get the token definition
       p = pulls.pop(0)
       token = self.pool["tokens"][bag[p]]
@@ -192,6 +198,9 @@ class TokenBag:
       if minRank > rank:
         continue
 
+      if int(token["Enable Crit"]) >= int(rank):
+        rs["can-crit"] = "Y"
+        
       bHit = 0
       bMiss = 0
       bSum = 0
@@ -208,9 +217,9 @@ class TokenBag:
       rs["hits"] += bHit
       rs["misses"] += bMiss
       rs["sum"] += bSum
-
+  
       # Handle Flipped Hits/Misses/Sums
-      if token["Can Flip"] and rank <= token["Flipped"]["Min Rank"]:
+      if token["Can Flip"] and rank >= token["Flipped"]["Min Rank"]:
         (fHit, fMiss, fSum) = self._getHitMissSum(
           rank,
           token["Flipped"]["Min Rank"],
@@ -281,7 +290,4 @@ class TokenBag:
       if token["Ends Pulls"]:
         break
 
-      # Check if we hit the max token pull
-      if rs["pulls"] >= self.max_pulls:
-        break
     return rs
