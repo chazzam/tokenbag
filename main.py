@@ -31,9 +31,9 @@ def main():
       "-r",
       "--rank",
       help=
-      "Max rank of the skill. 0 - no rank, 1 - Bronze, 2 - Silver, 3 - Gold. [3]",
+      "Max rank of the skill. 0 - no rank, 1 - Bronze, 2 - Silver, 3 - Gold. [0]",
       type=int,
-      default=3)
+      default=0)
   parser.add_argument(
       "-n",
       "--number-of-draws",
@@ -44,9 +44,9 @@ def main():
       "-p",
       "--pull-cap",
       help=
-      "Maximum number of tokens to pull in a single draw. 0 - unlimited [10]",
+      "Maximum number of tokens to pull in a single draw. 0 - unlimited [3]",
       type=int,
-      default=10)
+      default=3)
   parser.add_argument(
       "-b",
       "--bag",
@@ -55,12 +55,11 @@ def main():
       default="Base")
 
   args = parser.parse_args()
-  #tokenpulls = tokenbag
-  #pool = tokenpulls.build_pool(args.config)
   pool = TokenBag(args.config, args.bag, args.debug, args.log, args.pull_cap)
-  print(pool.get_pool())
+  #print(pool.get_pool())
   print("\nRunning a pull")
-  print(pool.pull(1, 0))
+  for i in range(args.number_of_draws):
+    print(pool.pull(args.rank, 0))
 
 
 main()
