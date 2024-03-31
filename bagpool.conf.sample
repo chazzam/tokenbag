@@ -1,32 +1,58 @@
 {
-   "Bag Pool": {
-      "Opposed Bags": [
-         {
-            "Blank": 2,
-            "Hit": 2,
-            "Bronze": 2
-         },
-         {
-            "Blank": 2,
-            "Miss": 2,
-            "Gobbler": 2
-         }
-      ],
-      "Base": [
-         {
-            "Hit Red": 3,
-            "Bronze": 1,
-            "Silver": 1,
-            "Gold": 1,
-            "Miss": 4,
-            "Hit Bronze": 1,
-            "Hit Silver": 2,
-            "Hit Gold": 1,
-            "Miss Bronze": 1,
-            "Gobbler": 0,
-            "Gobstopper": 1
-         }
+   "Config": {
+      "bag_name": "Base",
+      "max_draws": 5,
+      "sums": False,
+      "hit_ceil": 3,
+      "hit_full": 2,
+      "hit_partial": 1,
+      "miss_ceil": 2,
+      "Comment": [
+         "Parameters defined here act as a default for all bags"
       ]
+   },
+   "Bag Pool": {
+      "Opposed Bags": {
+         "Config": {
+            "max_draws": 4,
+            "bag_draws": [(0,1), (1,1)],
+            "Comment": [
+               "These parameters only affect this bag, if this bag is selected via 'bag_name'"
+            ]
+         },
+         "Specification": [
+            {
+               "Blank": 2,
+               "Hit": 2,
+               "Bronze": 2
+            },
+            {
+               "Blank": 2,
+               "Miss": 2,
+               "Gobbler": 2
+            }
+         ]
+      },
+      "Base": {
+         "Config": {
+            "max_draws": 3
+         },
+         "Specification": [
+            {
+               "Hit Red": 3,
+               "Bronze": 1,
+               "Silver": 1,
+               "Gold": 1,
+               "Miss": 4,
+               "Hit Bronze": 1,
+               "Hit Silver": 2,
+               "Hit Gold": 1,
+               "Miss Bronze": 1,
+               "Gobbler": 0,
+               "Gobstopper": 1
+            }
+         ]
+      }
    },
    "Token Pool": {
       "Blank": {

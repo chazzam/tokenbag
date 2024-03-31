@@ -5,8 +5,8 @@ if sys.version_info.major < 3 or sys.version_info.minor < 10:
   sys.exit(1)
 
 import argparse
+import json
 from tokenbag import TokenBag
-
 
 def main():
   parser = argparse.ArgumentParser(
@@ -21,7 +21,7 @@ def main():
       help="Path to the configuration file. [bagpool.conf]",
       default="bagpool.conf")
   parser.add_argument(
-      "-d",
+      "-D",
       "--debug",
       action="store_false",
       help="Enable debug mode.",
@@ -39,10 +39,10 @@ def main():
       "--number-of-draws",
       help="Number of draws to make for generating statistics. [100]",
       type=int,
-      default=100)
+      default=10)
   parser.add_argument(
-      "-p",
-      "--pull-cap",
+      "-d",
+      "--draw-cap",
       help=
       "Maximum number of tokens to pull in a single draw. 0 - unlimited [3]",
       type=int,
@@ -53,22 +53,28 @@ def main():
       help="Specify name of bag (if more than one in config)",
       type=str,
       default="Base")
+  parser.add_argument(
+    "-s",
+    "--sums",
+    action="store_true",
+    help="Calculate sums instead of hits/misses. [False]",
+    default=False)
 
   args = parser.parse_args()
   pool = TokenBag(args.debug, args.log)
-  pool.configure_pool(
-    bag_name=args.bag, 
+  pool.read_config_file(args.config)
+  pool.configure_pull(
+    bag_name=args.bag,
     max_draws=args.draw_cap,
-    max_rank=3,
     sums=args.sums
   )
-  pool.read_config_file(args.config)
-  pool.initialize_pool()
-  
-  #print(pool.get_pool())
+
+  print(pool.get_pool())
   print("\nRunning a pull")
   for i in range(args.number_of_draws):
-    print(json.dumps(pool.pull(bag=0), indent=2))
+    #print(json.dumps(pool.pull(), indent=2))
+    #print(json.dumps(pool.pull()))
+    print(json.dumps(pool.pull()).replace("}", "}\n"))
 
 
 main()
