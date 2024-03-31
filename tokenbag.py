@@ -52,19 +52,21 @@ class TokenBag:
         filemode='w',
         level=logging.DEBUG)
 
-  def read_config_file(self, config_filename: str) -> None:
+  def read_config_file(self, config_filename: str, bag_name:str = "") -> None:
     """Read configuration from a json text file"""
     self.config_filename = config_filename
     with open(config_filename) as f:
       config = json.load(f)
-      self._initialize_pool(config)
+      self._initialize_pool(config, bag_name)
 
-  def import_config_json(self, config_json: dict) -> None:
+  def import_config_json(self, config_json: dict, bag_name:str = "") -> None:
     """Load configuration from a json dict"""
-    self._initialize_pool(config_json)
+    self._initialize_pool(config_json, bag_name)
 
   def configure_pull(self, **kwargs) -> None:
     """Update configuration parameters for pulling from the bag(s)"""
+    logger = logging.getLogger(__name__)
+
     # Respecify defaults to ensure they exist
     parameters = {
       "bag_name": self.bag_name,
@@ -108,7 +110,10 @@ class TokenBag:
     if "max_rank" in parameters:
       self.max_rank = parameters["max_rank"]
 
-  def _initialize_pool(self, config:dict) -> None:
+    logger.debug("Updated configuration:")
+    logger.debug(vars(self))
+
+  def _initialize_pool(self, config:dict, bag_name:str = "") -> None:
     """Parse the stored config and generate the bag and token pools"""
     logger = logging.getLogger(__name__)
     if "Bag Pool" not in config or "Token Pool" not in config:
@@ -118,6 +123,11 @@ class TokenBag:
     # Update configuration if given
     if "Config" in config:
       self.configure_pull(**(config["Config"]))
+    if bag_name:
+      # we want a command line arg to over-ride the config file, so set this now if needed
+      logger.debug("Command-line overriding the bag_name from `%s` to `%s`",
+                   self.bag_name, bag_name)
+      self.bag_name = bag_name
     if self.bag_name not in config["Bag Pool"]:
       logger.error("Requested bag `%s` not found in Bag Pool", self.bag_name)
       return

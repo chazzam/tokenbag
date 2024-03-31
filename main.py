@@ -62,9 +62,8 @@ def main():
 
   args = parser.parse_args()
   pool = TokenBag(args.debug, args.log)
-  pool.read_config_file(args.config)
+  pool.read_config_file(args.config, bag_name=args.bag)
   pool.configure_pull(
-    bag_name=args.bag,
     max_draws=args.draw_cap,
     sums=args.sums
   )
