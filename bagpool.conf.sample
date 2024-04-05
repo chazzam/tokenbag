@@ -4,9 +4,11 @@
       "max_draws": 5,
       "sums": false,
       "hit_ceil": 3,
+      "hit_ceil_only_on_crit": false,
       "hit_full": 2,
       "hit_partial": 1,
       "miss_ceil": 2,
+      "ranks": ["Unranked", "Bronze", "Silver", "Gold"],
       "Comment": [
          "Parameters defined here act as a default for all bags"
       ]
