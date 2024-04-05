@@ -367,7 +367,7 @@ class TokenBag:
       if not hasRank and not hasFlippedRank:
         continue
 
-      if int(token["Enable Crit"]) >= int(rank):
+      if token["Enable Crit"] >= 0 and rank >= token["Enable Crit"]:
         rs["can-crit"] = "Y"
         canCrit = True
 
