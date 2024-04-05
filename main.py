@@ -31,13 +31,13 @@ def main():
       "-r",
       "--rank",
       help=
-      "Max rank of the skill. 0 - no rank, 1 - Bronze, 2 - Silver, 3 - Gold. [0]",
+      "Max rank of the skill. 0 - no rank, 1 - Bronze, 2 - Silver, 3 - Gold. '-1' for all. [-1]",
       type=int,
-      default=0)
+      default=-1)
   parser.add_argument(
       "-n",
       "--number-of-draws",
-      help="Number of draws to make for generating statistics. [100]",
+      help="Number of draws to make for generating statistics. [10]",
       type=int,
       default=10)
   parser.add_argument(
@@ -68,12 +68,28 @@ def main():
     sums=args.sums
   )
 
-  print(pool.get_pool())
+  #print(pool.get_pool())
   print("\nRunning a pull")
-  for i in range(args.number_of_draws):
-    #print(json.dumps(pool.pull(), indent=2))
-    #print(json.dumps(pool.pull()))
-    print(json.dumps(pool.pull()).replace("}", "}\n"))
+  for _ in range(args.number_of_draws):
+    #print(json.dumps(pool.pull()[-1]).replace("}", "}\n"))
+    for pull in pool.pull()[-1]["ranks"]:
+      if pull["rank"] != args.rank and args.rank >= 0:
+        continue
+      crit = "^" if pull["can-crit"] == "Y" else " "
+      if args.sums:
+        print(
+          f"{crit}{pull['rank']}:"
+          f" {pull['sum']:+}"
+          f" f{pull['fortune-sum']:+}"
+          f" pull: {', '.join(pull['pull-order'])}"
+        )
+      else:
+        print(
+          f"{crit}{pull['rank']}:"
+          f" {pull['hits']}/{pull['misses']}"
+          f" f{pull['fortune-hits']}/{pull['fortune-misses']}"
+          f" pull: {', '.join(pull['pull-order'])}"
+        )
 
 
 main()
