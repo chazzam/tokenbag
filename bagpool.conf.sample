@@ -2,7 +2,7 @@
    "Config": {
       "bag_name": "Base",
       "max_draws": 5,
-      "sums": False,
+      "sums": false,
       "hit_ceil": 3,
       "hit_full": 2,
       "hit_partial": 1,
