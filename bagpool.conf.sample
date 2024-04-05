@@ -15,7 +15,7 @@
       "Opposed Bags": {
          "Config": {
             "max_draws": 4,
-            "bag_draws": [(0,1), (1,1)],
+            "bag_draws": [[0,1], [1,1]],
             "Comment": [
                "These parameters only affect this bag, if this bag is selected via 'bag_name'"
             ]
