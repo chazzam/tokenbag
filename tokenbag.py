@@ -18,6 +18,7 @@ class TokenBag:
     # Configuration updated in configure_pool
     # name of bag set to use
     self.bag_name = "Base"
+    self.ranks = ["Unranked", "Bronze", "Silver", "Gold"]
     # Max tokens to draw in a pull
     self.max_draws = 10
     # Configure #tokens to draw from each bag in sequence up to max_draws total tokens
@@ -70,6 +71,7 @@ class TokenBag:
     # Respecify defaults to ensure they exist
     parameters = {
       "bag_name": self.bag_name,
+      "ranks": self.ranks,
       "max_draws": self.max_draws,
       "sums": self.sums,
       "hit_ceil_only_on_crit": self.hit_ceil_only_on_crit,
@@ -87,6 +89,7 @@ class TokenBag:
     parameters.update(kwargs)
 
     self.bag_name = parameters["bag_name"]
+    self.ranks = parameters["ranks"]
     self.max_draws = parameters["max_draws"]
     self.sums = parameters["sums"]
 
@@ -218,6 +221,12 @@ class TokenBag:
     """Return the stored bag and token pools"""
     return self.pool
 
+  def get_rank_name(self, rank:int) -> str:
+    """Convert an integer rank into its string rank name"""
+    if rank >= len(self.ranks) or rank < 0:
+      return ""
+    return self.ranks[rank]
+
   def _replayable_pull(self) -> list:
     """Return a list of token names as the pull from the bag(s)"""
     the_pull = []
@@ -325,6 +334,14 @@ class TokenBag:
       "fortune-hits": 0,
       "fortune-misses": 0,
       "fortune-sum": 0,
+      "crit": False,
+      "full": False,
+      "partial": False,
+      "failure": False,
+      "fortune-crit": False,
+      "fortune-full": False,
+      "fortune-partial": False,
+      "fortune-failure": False,
       "pull-order": []
     }
     canBeStolen = []
@@ -514,6 +531,46 @@ class TokenBag:
       if finalFlippedSum and finalFlippedHitMiss:
         draw_again = False
 
+    if self.sums:
+      # Base
+      if canCrit and rs["sum"] >= self.sum_ceil:
+        rs["crit"] = True
+      elif rs["sum"] >= self.sum_full:
+        rs["full"] = True
+      elif rs["sum"] >= self.sum_partial:
+        rs["partial"] = True
+      else:
+        rs["failure"] = True
+
+      # Fortune
+      if canCrit and rs["fortune-sum"] >= self.sum_ceil:
+        rs["fortune-crit"] = True
+      elif rs["fortune-sum"] >= self.sum_full:
+        rs["fortune-full"] = True
+      elif rs["fortune-sum"] >= self.sum_partial:
+        rs["fortune-partial"] = True
+      else:
+        rs["fortune-failure"] = True
+    else:
+      # Base
+      if canCrit and rs["hits"] >= self.hit_ceil:
+        rs["crit"] = True
+      elif rs["hits"] >= self.hit_full:
+        rs["full"] = True
+      elif rs["hits"] >= self.hit_partial:
+        rs["partial"] = True
+      else:
+        rs["failure"] = True
+
+      # Fortune
+      if canCrit and rs["fortune-hits"] >= self.hit_ceil:
+        rs["fortune-crit"] = True
+      elif rs["fortune-hits"] >= self.hit_full:
+        rs["fortune-full"] = True
+      elif rs["fortune-hits"] >= self.hit_partial:
+        rs["fortune-partial"] = True
+      else:
+        rs["fortune-failure"] = True
     return rs
 
   def pull(self) -> list:
