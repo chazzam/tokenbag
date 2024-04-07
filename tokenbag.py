@@ -12,6 +12,7 @@ class TokenBag:
     def __init__(self, debug: bool, log: str) -> None:
         self.config_filename = ""
         self.pool = {"bags": [], "tokens": {}}
+        self.test_pulls = []
         self.debug = debug
         self.logfile = log
 
@@ -56,20 +57,30 @@ class TokenBag:
                 level=logging.DEBUG,
             )
 
-    def read_config_file(self, config_filename: str, bag_name: str = "") -> None:
+    def read_config_file(
+            self,
+            config_filename: str,
+            bag_name: str = "",
+            tests: bool = True
+    ) -> None:
         """Read configuration from a json text file"""
         self.config_filename = config_filename
         with open(config_filename) as f:
             config = json.load(f)
-            self._initialize_pool(config, bag_name)
+            self._initialize_pool(config, bag_name, tests)
 
-    def import_config_json(self, config_json: dict, bag_name: str = "") -> None:
+    def import_config_json(
+            self,
+            config_json: dict,
+            bag_name: str = "",
+            tests: bool = True
+    ) -> None:
         """Load configuration from a json dict"""
-        self._initialize_pool(config_json, bag_name)
+        self._initialize_pool(config_json, bag_name, tests)
 
     def configure_pull(self, **kwargs) -> None:
         """Update configuration parameters for pulling from the bag(s)"""
-        logger = logging.getLogger(__name__)
+        #logger = logging.getLogger(__name__)
 
         # Respecify defaults to ensure they exist
         parameters = {
@@ -110,16 +121,21 @@ class TokenBag:
         # [(bag, draws from bag before moving on), ...]
         # It will loop over the list to build the pull,
         # so to draw once from each bag in turn do [(0,1), (1,1)] for two bags
-        self.bag_draws = parameters["bag_draws"]
+        self.bag_draws = copy.deepcopy(parameters["bag_draws"])
 
         # This is auto calculated when initializing the pool, but allow overriding it
         if "max_rank" in parameters:
             self.max_rank = parameters["max_rank"]
 
-        logger.debug("Updated configuration:")
-        logger.debug(vars(self))
+        #logger.debug("Updated configuration:")
+        #logger.debug(vars(self))
 
-    def _initialize_pool(self, config: dict, bag_name: str = "") -> None:
+    def _initialize_pool(
+            self,
+            config: dict,
+            bag_name: str = "",
+            tests: bool = True
+    ) -> None:
         """Parse the stored config and generate the bag and token pools"""
         logger = logging.getLogger(__name__)
         if "Bag Pool" not in config or "Token Pool" not in config:
@@ -177,6 +193,25 @@ class TokenBag:
             if "Specification" in bag_top:
                 bag_spec = bag_top["Specification"]
 
+        # Build a fake tests bag, to ensure all the test tokens are available
+        if "Test Pulls" in config:
+            logger.debug(
+                f"Found {len(config['Test Pulls'])} Test Pulls in config."
+                f" Tests: {tests}")
+        if tests and "Test Pulls" in config:
+            test_bag = {}
+            for test in config["Test Pulls"]:
+                if (
+                    "Pull" not in test
+                    or "Tests" not in test
+                ):
+                    continue
+                self.test_pulls.append(copy.deepcopy(test))
+                for draw in test["Pull"]:
+                    if draw not in test_bag:
+                        test_bag[draw] = 1
+            bag_spec.append(test_bag)
+
         for bag_def in bag_spec:
             bag_number = len(self.pool["bags"]) + 1
             logger.debug(
@@ -224,6 +259,8 @@ class TokenBag:
             self.pool["bags"].append(sub_bag)
             # Update the bag with the max rank found on a token
             self.max_rank = max_rank
+        logger.debug("Final configuration:")
+        logger.debug(vars(self))
 
     def get_pool(self) -> dict:
         """Return the stored bag and token pools"""
@@ -633,3 +670,210 @@ class TokenBag:
             pulls.append(copy.deepcopy(ranks))
 
         return pulls
+
+    def _test_result(
+            self,
+            fail:bool,
+            partial:bool,
+            full:bool,
+            crit:bool,
+            test:str
+    ) -> tuple[bool, str]:
+        """Evaluate a string test result against the pull result booleans"""
+        actual = "_"
+        if crit:
+            actual = "^"
+        elif full:
+            actual = "+"
+        elif partial:
+            actual = "-"
+        elif fail:
+            actual = "."
+
+        return (bool(test == actual), actual)
+
+    def _test_pull(self, pull: list, test: str) -> dict:
+        """Evaluates a single rank test pull"""
+        logger = logging.getLogger(__name__)
+        test = test.replace(" ", "")
+        results = {
+            "Pull": copy.deepcopy(pull),
+            "Test Request": test,
+            "Tests": 0,
+            "Valid": 0,
+            "Failed": [],
+        }
+
+        rank = int(test[0:1])
+        pSum = test.find('=')
+        pHit = test.find('&')
+        tSum = ""
+        tHit = ""
+
+        part = test.partition('=')
+        if pSum > 0:
+            # Sum is present
+            if pHit > 0 and pSum > pHit:
+                # Hit is present 1st, Sum is 2nd
+                tSum = part[2]
+                tHit = part[0].partition('&')[2]
+            elif pHit > pSum:
+                # Hit is present 2nd, Sum is 1st
+                part2 = part[2].partition('&')
+                tSum = part2[0]
+                tHit = part2[2]
+            else:
+                # Hit is not present, only Sum
+                tSum = part[2]
+        elif pHit > 0:
+            # Hit is present, Sum is not
+            part = test.partition('&')
+            tHit = part[2]
+
+        if not tHit and not tSum:
+            results["Tests"] = 1
+            results["Failed"].append(test)
+            return results
+
+        try:
+            # evaluate sum test if present
+            if tSum:
+                self.sums = True
+                rs = self._pull(rank, copy.deepcopy(pull))
+                tr = tSum.split('$')
+                if tr[0]:
+                    # Base side, if given
+                    results["Tests"] += 1
+                    val = int(tr[0][:-1])
+                    res = tr[0][-1]
+                    (match, pull_actual) = self._test_result(
+                        fail=rs["failure"],
+                        partial=rs["partial"],
+                        full=rs["full"],
+                        crit=rs["crit"],
+                        test=res
+                    )
+                    if val == rs["sum"] and match:
+                        results["Valid"] += 1
+                    else:
+                        logger.debug(rs)
+                        results["Failed"].append(
+                            f"{rank}={tr[0]}$;{rs['sum']}{pull_actual}$")
+                        logger.debug(results["Failed"][-1])
+                if len(tr) > 1 and tr[1]:
+                    # Fortune side, if given
+                    results["Tests"] += 1
+                    val = int(tr[1][:-1])
+                    res = tr[1][-1]
+                    (match, pull_actual) = self._test_result(
+                        fail=rs["fortune-failure"],
+                        partial=rs["fortune-partial"],
+                        full=rs["fortune-full"],
+                        crit=rs["fortune-crit"],
+                        test=res
+                    )
+                    if val == rs["fortune-sum"] and match:
+                        results["Valid"] += 1
+                    else:
+                        logger.debug(rs)
+                        results["Failed"].append(
+                            f"{rank}=${tr[1]};${rs['fortune-sum']}{pull_actual}")
+                        logger.debug(results["Failed"][-1])
+
+            # Evaluate hit/miss test if present
+            if tHit:
+                self.sums = False
+                rs = self._pull(rank, copy.deepcopy(pull))
+                tr = tHit.split('$')
+                if tr[0]:
+                    # Base side, if given
+                    results["Tests"] += 1
+                    (hit, miss) = tr[0][:-1].split('/')
+                    hit = int(hit)
+                    miss = int(miss)
+                    res = tr[0][-1]
+                    (match, pull_actual) = self._test_result(
+                        fail=rs["failure"],
+                        partial=rs["partial"],
+                        full=rs["full"],
+                        crit=rs["crit"],
+                        test=res
+                    )
+                    if hit == rs["hits"] and miss == rs["misses"] and match:
+                        results["Valid"] += 1
+                    else:
+                        logger.debug(rs)
+                        results["Failed"].append(
+                            f"{rank}&{tr[0]}$;"
+                            f"{rs['hits']}/{rs['misses']}{pull_actual}$"
+                        )
+                        logger.debug(results["Failed"][-1])
+                if len(tr) > 1 and tr[1]:
+                    # Fortune side, if given
+                    results["Tests"] += 1
+                    (hit, miss) = tr[1][:-1].split('/')
+                    hit = int(hit)
+                    miss = int(miss)
+                    res = tr[1][-1]
+                    (match, pull_actual) = self._test_result(
+                        fail=rs["fortune-failure"],
+                        partial=rs["fortune-partial"],
+                        full=rs["fortune-full"],
+                        crit=rs["fortune-crit"],
+                        test=res
+                    )
+                    if (
+                            hit == rs["fortune-hits"]
+                            and miss == rs["fortune-misses"]
+                            and match
+                    ):
+                        results["Valid"] += 1
+                    else:
+                        logger.debug(rs)
+                        results["Failed"].append(
+                            f"{rank}&${tr[1]};"
+                            f"${rs['fortune-hits']}/{rs['fortune-misses']}{pull_actual}"
+                        )
+                        logger.debug(results["Failed"][-1])
+        except ValueError:
+            results["Tests"] += 1
+            results["Failed"].append(test)
+
+        return results
+
+    def verify_tests(self) -> tuple[bool, list]:
+        """Evaluate the Test Pulls and report results"""
+
+        base_config = {
+            "max_draws": self.max_draws,
+            "sums": self.sums,
+            "hit_ceil_only_on_crit": self.hit_ceil_only_on_crit,
+            "hit_ceil": self.hit_ceil,
+            "hit_full": self.hit_full,
+            "hit_partial": self.hit_partial,
+            "miss_ceil": self.miss_ceil,
+            "sum_ceil": self.sum_ceil,
+            "sum_full": self.sum_full,
+            "sum_partial": self.sum_partial,
+            "sum_floor": self.sum_floor,
+            "bag_draws": copy.deepcopy(self.bag_draws),
+            "max_rank": self.max_rank,
+        }
+
+        test_results = []
+        passed_all = True
+
+        for test in self.test_pulls:
+            # Reset config to the base configuration
+            self.configure_pull(**base_config)
+            if "Config" in test:
+                # Load in any test specific configuration
+                self.configure_pull(**(test["Config"]))
+
+            for test_pull in test["Tests"]:
+                rs = self._test_pull(copy.deepcopy(test["Pull"]), test_pull)
+                if len(rs["Failed"]) > 0:
+                    passed_all = False
+                test_results.append(rs)
+
+        return (passed_all, test_results)

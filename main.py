@@ -6,6 +6,7 @@ if sys.version_info.major < 3 or sys.version_info.minor < 10:
 
 import argparse
 import copy
+import json
 
 from tokenbag import TokenBag
 
@@ -68,18 +69,39 @@ def main():
     )
     parser.add_argument(
         "-P",
-        "--print-rank-names",
+        "--print-rank-numbers",
         action="store_true",
-        help="Print Rank Names in some outputs [True]",
-        default=True,
+        help="Print Rank Numbers in some outputs [False]",
+        default=False,
+    )
+
+    parser.add_argument(
+        "-V",
+        "--skip-verify-tests",
+        action="store_true",
+        help="Skip running verification tests on bag before running pulls [False]",
+        default=False,
     )
 
     args = parser.parse_args()
     pool = TokenBag(args.debug, args.log)
-    pool.read_config_file(args.config, bag_name=args.bag)
+    pool.read_config_file(
+        args.config,
+        bag_name=args.bag,
+        tests=bool(not args.skip_verify_tests))
     pool.configure_pull(max_draws=args.draw_cap, sums=args.sums)
 
     # print(pool.get_pool())
+    run_pulls = True
+    if not args.skip_verify_tests:
+      print("\nVerifying Tests")
+      (run_pulls, results) = pool.verify_tests()
+      print("\nTest Results:")
+      print(json.dumps(results).replace("}", "}\n"))
+
+    if not run_pulls:
+        print("\n\nERROR: Test Verifications failed. Aborting pulls")
+        return
 
     print("\nRunning a pull")
     rank_stats = {}
@@ -107,7 +129,7 @@ def main():
             crit = "^" if pull["can-crit"] == "Y" else " "
 
             name = pull["rank"]
-            if args.print_rank_names:
+            if not args.print_rank_numbers:
                 name = pool.get_rank_name(pull["rank"])
 
             base = ""
@@ -165,7 +187,7 @@ def main():
     for rank in sorted(rank_stats.keys()):
         stats = rank_stats[rank]
         name = rank
-        if args.print_rank_names:
+        if not args.print_rank_numbers:
             name = pool.get_rank_name(rank)
         print(
             f"{name:>14}: "
