@@ -1,10 +1,10 @@
 [tool.poetry]
 name = "tokenbag"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["chazzam <6433463+chazzam@users.noreply.github.com>"]
 readme = "README.md"
-packages = [{include = "tokenbag"}]
+# packages = [{include = "tokenbag"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10.0,<3.12"

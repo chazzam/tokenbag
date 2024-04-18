@@ -173,14 +173,14 @@ def main():
                     f"{crit}{pull['rank']}:"
                     f" {pull['sum']:+}b{base}"
                     f" {pull['fortune-sum']:+}f{fortune}"
-                    f" pull: {', '.join(pull['pull-order'])}"
+                    f" pull: {', '.join(pull['fortune-pull-order'])}"
                 )
             else:
                 print(
                     f"{name:>10}:{crit}"
                     f" {pull['hits']}/{pull['misses']}b{base}"
                     f" {pull['fortune-hits']}/{pull['fortune-misses']}f{fortune}"
-                    f" pull: {', '.join(pull['pull-order'])}"
+                    f" pull: {', '.join(pull['fortune-pull-order'])}"
                 )
 
     print(f"\nSummary Counts: (from {args.number_of_draws} pulls)")

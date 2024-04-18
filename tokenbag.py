@@ -387,6 +387,7 @@ class TokenBag:
             "fortune-partial": False,
             "fortune-failure": False,
             "pull-order": [],
+            "fortune-pull-order": [],
         }
         canBeStolen = []
         canBeStolenFlipped = []
@@ -412,7 +413,10 @@ class TokenBag:
             # Get the token definition
             p = the_pull.pop(0)
             token = self.pool["tokens"][p]
-            rs["pull-order"].append(p)
+            rs["fortune-pull-order"].append(p)
+            if not baseDrawEnded:
+                rs["pull-order"].append(p)
+
             rank_draw += 1
 
             # Check rank compliance
