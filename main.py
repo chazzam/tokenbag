@@ -275,7 +275,7 @@ def main():
                 )
             print(record)
 
-        print(f"\nSummary Counts: (from {args.number_of_draws} pulls)")
+        print(f"\nSummary Counts: (from {args.number_of_draws} Resistance pulls)")
         for rank in sorted(rank_stats.keys()):
             stats = rank_stats[rank]
             name = rank
@@ -283,16 +283,16 @@ def main():
                 name = pool.get_rank_name(rank)
             print(
                 f"{name:>14}:"
-                f" {stats['costs']['mitigated']:>3}+"
-                f" {stats['costs']['taken']:>3}~"
-                f" {stats['costs']['lost']:>3}$"
+                f" {stats['costs']['mitigated']:>4}+"
+                f" {stats['costs']['taken']:>4}~"
+                f" {stats['costs']['lost']:>4}$"
             )
         name = "Totals"
         print(
             f"\n{name:>14}:"
-            f" {total_stats['costs']['mitigated']:>3}+"
-            f" {total_stats['costs']['taken']:>3}~"
-            f" {total_stats['costs']['lost']:>3}$"
+            f" {total_stats['costs']['mitigated']:>4}+"
+            f" {total_stats['costs']['taken']:>4}~"
+            f" {total_stats['costs']['lost']:>4}$"
         )
 
 
