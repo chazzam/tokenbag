@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tokenbag"
-version = "0.1.1"
+version = "0.2.0"
 description = ""
 authors = ["chazzam <6433463+chazzam@users.noreply.github.com>"]
 readme = "README.md"

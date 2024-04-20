@@ -22,6 +22,7 @@ class TokenBag:
         self.ranks = ["Unranked", "Bronze", "Silver", "Gold"]
         # Max tokens to draw in a pull
         self.max_draws = 10
+        self.ignores_ends_draws = False
         # Configure #tokens to draw from each bag in sequence up
         # to max_draws total tokens
         self.bag_draws = [(0, 1)]
@@ -42,7 +43,7 @@ class TokenBag:
         # auto calculated or overridden by configure_pool
         self.max_rank = 3
 
-        if debug:
+        if not debug:
             logging.basicConfig(
                 format="%(levelname)s: %(message)s",
                 filename=log,
@@ -58,10 +59,7 @@ class TokenBag:
             )
 
     def read_config_file(
-            self,
-            config_filename: str,
-            bag_name: str = "",
-            tests: bool = True
+        self, config_filename: str, bag_name: str = "", tests: bool = True
     ) -> None:
         """Read configuration from a json text file"""
         self.config_filename = config_filename
@@ -70,23 +68,21 @@ class TokenBag:
             self._initialize_pool(config, bag_name, tests)
 
     def import_config_json(
-            self,
-            config_json: dict,
-            bag_name: str = "",
-            tests: bool = True
+        self, config_json: dict, bag_name: str = "", tests: bool = True
     ) -> None:
         """Load configuration from a json dict"""
         self._initialize_pool(config_json, bag_name, tests)
 
     def configure_pull(self, **kwargs) -> None:
         """Update configuration parameters for pulling from the bag(s)"""
-        #logger = logging.getLogger(__name__)
+        # logger = logging.getLogger(__name__)
 
         # Respecify defaults to ensure they exist
         parameters = {
             "bag_name": self.bag_name,
             "ranks": self.ranks,
             "max_draws": self.max_draws,
+            "ignores_ends_draws": self.ignores_ends_draws,
             "sums": self.sums,
             "hit_ceil_only_on_crit": self.hit_ceil_only_on_crit,
             "hit_ceil": self.hit_ceil,
@@ -105,6 +101,7 @@ class TokenBag:
         self.bag_name = parameters["bag_name"]
         self.ranks = parameters["ranks"]
         self.max_draws = parameters["max_draws"]
+        self.ignores_ends_draws = parameters["ignores_ends_draws"]
         self.sums = parameters["sums"]
 
         self.hit_ceil_only_on_crit = parameters["hit_ceil_only_on_crit"]
@@ -127,14 +124,11 @@ class TokenBag:
         if "max_rank" in parameters:
             self.max_rank = parameters["max_rank"]
 
-        #logger.debug("Updated configuration:")
-        #logger.debug(vars(self))
+        # logger.debug("Updated configuration:")
+        # logger.debug(vars(self))
 
     def _initialize_pool(
-            self,
-            config: dict,
-            bag_name: str = "",
-            tests: bool = True
+        self, config: dict, bag_name: str = "", tests: bool = True
     ) -> None:
         """Parse the stored config and generate the bag and token pools"""
         logger = logging.getLogger(__name__)
@@ -197,14 +191,12 @@ class TokenBag:
         if "Test Pulls" in config:
             logger.debug(
                 f"Found {len(config['Test Pulls'])} Test Pulls in config."
-                f" Tests: {tests}")
+                f" Tests: {tests}"
+            )
         if tests and "Test Pulls" in config:
             test_bag = {}
             for test in config["Test Pulls"]:
-                if (
-                    "Pull" not in test
-                    or "Tests" not in test
-                ):
+                if "Pull" not in test or "Tests" not in test:
                     continue
                 self.test_pulls.append(copy.deepcopy(test))
                 for draw in test["Pull"]:
@@ -236,12 +228,33 @@ class TokenBag:
 
                 # Add the token definition to the Token Pool
                 token = json.loads(json.dumps(blank_token))
-                token.update(config["Token Pool"][token_def])
+                conf_token = config["Token Pool"][token_def]
+                if "Hit Value" not in conf_token and "Sum Value" in conf_token:
+                    conf_token["Hit Value"] = copy.deepcopy(conf_token["Sum Value"])
+                elif "Sum Value" not in conf_token and "Hit Value" in conf_token:
+                    conf_token["Sum Value"] = copy.deepcopy(conf_token["Hit Value"])
+                token.update(conf_token)
                 max_rank = max(max_rank, token["Min Rank"])
+
                 if token["Can Flip"]:
                     # Add in the fully specified Flipped state,
                     # defaulted to the initial token state
                     fToken = json.loads(json.dumps(token))
+                    if (
+                        "Hit Value" not in conf_token["Flipped"]
+                        and "Sum Value" in conf_token["Flipped"]
+                    ):
+                        conf_token["Flipped"]["Hit Value"] = copy.deepcopy(
+                            conf_token["Flipped"]["Sum Value"]
+                        )
+                    elif (
+                        "Sum Value" not in conf_token["Flipped"]
+                        and "Hit Value" in conf_token["Flipped"]
+                    ):
+                        conf_token["Flipped"]["Sum Value"] = copy.deepcopy(
+                            conf_token["Flipped"]["Hit Value"]
+                        )
+
                     fToken.update(token["Flipped"])
                     # These options are not supported after flipping
                     fToken["Can Flip"] = False
@@ -326,7 +339,7 @@ class TokenBag:
             flippedEnd = (token["Can Flip"] and token["Flipped"]["Ends Draws"]) or (
                 not token["Can Flip"] and token["Ends Draws"]
             )
-            if flippedEnd:
+            if flippedEnd and not self.ignores_ends_draws:
                 break
 
         return the_pull
@@ -365,7 +378,7 @@ class TokenBag:
 
         return (vHit, abs(vMiss), vSum)
 
-    def _pull(self, rank: int, the_pull: list) -> dict:
+    def _pull(self, rank: int, the_pull: list, resistance: bool) -> dict:
         """Evaluate a replayable pull via token names for a given rank"""
         draw_again = True
         rank_draw = 0
@@ -388,6 +401,11 @@ class TokenBag:
             "fortune-failure": False,
             "pull-order": [],
             "fortune-pull-order": [],
+            "costs": {
+                "lost": 0,
+                "taken": 0,
+                "mitigated": 0,
+            },
         }
         canBeStolen = []
         canBeStolenFlipped = []
@@ -416,8 +434,14 @@ class TokenBag:
             rs["fortune-pull-order"].append(p)
             if not baseDrawEnded:
                 rs["pull-order"].append(p)
+            if "Min Rank" not in token:
+                token["Min Rank"] = 0
 
             rank_draw += 1
+
+            fortuneLost = token["Ends Draws"] and resistance
+            if fortuneLost:
+                rs["costs"]["lost"] += 1
 
             # Check rank compliance
             minRank = token["Min Rank"]
@@ -442,25 +466,32 @@ class TokenBag:
             fHit = 0
             fMiss = 0
             fSum = 0
+            hitVal = 0
+            sumVal = 0
 
             # Handle Hits/Misses
             if hasRank:
-                (bHit, bMiss, bSum) = self._getHitMissSum(
-                    rank, minRank, token["Hit Value"], token["Sum Value"]
-                )
+                if "Hit Value" in token:
+                    hitVal = token["Hit Value"]
+                if "Sum Value" in token:
+                    sumVal = token["Sum Value"]
+                (bHit, bMiss, bSum) = self._getHitMissSum(rank, minRank, hitVal, sumVal)
                 if not baseDrawEnded and not finalHitMiss:
                     rs["hits"] += bHit
                     rs["misses"] += bMiss
+                    rs["costs"]["mitigated"] += int(bHit / bHit) if bHit > 0 else 0
+                    rs["costs"]["taken"] += int(bMiss / bMiss) if bMiss > 0 else 0
                 if not baseDrawEnded and not finalSum:
                     rs["sum"] += bSum
 
             # Handle Flipped Hits/Misses/Sums
             if token["Can Flip"] and hasFlippedRank:
+                if "Hit Value" in token["Flipped"]:
+                    hitVal = token["Flipped"]["Hit Value"]
+                if "Sum Value" in token["Flipped"]:
+                    sumVal = token["Flipped"]["Sum Value"]
                 (fHit, fMiss, fSum) = self._getHitMissSum(
-                    rank,
-                    token["Flipped"]["Min Rank"],
-                    token["Flipped"]["Hit Value"],
-                    token["Flipped"]["Sum Value"],
+                    rank, minFlippedRank, hitVal, sumVal
                 )
                 if not finalFlippedHitMiss:
                     rs["fortune-hits"] += fHit
@@ -481,16 +512,19 @@ class TokenBag:
                 for r in canBeStolen:
                     rToken = self.pool["tokens"][r]
                     rHasFlippedRank = bool(
-                        rToken["Can Flip"]
-                        and rToken["Flipped"]["Min Rank"] <= rank
+                        rToken["Can Flip"] and rToken["Flipped"]["Min Rank"] <= rank
                     )
 
                     if rToken["Can Be Stolen"] and not baseDrawEnded:
+                        if "Hit Value" in rToken:
+                            hitVal = rToken["Hit Value"]
+                        if "Sum Value" in rToken:
+                            sumVal = rToken["Sum Value"]
                         (bHit, bMiss, bSum) = self._getHitMissSum(
                             rank,
                             rToken["Min Rank"],
-                            rToken["Hit Value"],
-                            rToken["Sum Value"],
+                            hitVal,
+                            sumVal,
                         )
                         if rToken["Can Latch"] and latched:
                             latched = False
@@ -515,18 +549,26 @@ class TokenBag:
                         latchedFlipped = False
 
                     if rHasFlippedRank:
+                        if "Hit Value" in rToken["Flipped"]:
+                            hitVal = rToken["Flipped"]["Hit Value"]
+                        if "Sum Value" in rToken["Flipped"]:
+                            sumVal = rToken["Flipped"]["Sum Value"]
                         (fHit, fMiss, fSum) = self._getHitMissSum(
                             rank,
                             rToken["Flipped"]["Min Rank"],
-                            rToken["Flipped"]["Hit Value"],
-                            rToken["Flipped"]["Sum Value"],
+                            hitVal,
+                            sumVal,
                         )
                     else:
+                        if "Hit Value" in rToken:
+                            hitVal = rToken["Hit Value"]
+                        if "Sum Value" in rToken:
+                            sumVal = rToken["Sum Value"]
                         (fHit, fMiss, fSum) = self._getHitMissSum(
                             rank,
                             rToken["Min Rank"],
-                            rToken["Hit Value"],
-                            rToken["Sum Value"],
+                            hitVal,
+                            sumVal,
                         )
                     if not finalFlippedHitMiss:
                         rs["fortune-hits"] -= fHit
@@ -571,18 +613,15 @@ class TokenBag:
                 latched = True
 
             # Check if token ends draws
-            if token["Ends Draws"]:
+            if token["Ends Draws"] and not self.ignores_ends_draws:
                 # The replayable pull ends when no more tokens can be drawn for
                 # fortune pulls. If only the base pull is ending here, we still
                 # need to process the fortune pull
                 baseDrawEnded = True
 
-            if (
-                rs["misses"] >= self.miss_ceil
-                or rs["hits"] >= self.hit_ceil
-            ) and (
-                (self.hit_ceil_only_on_crit and canCrit
-                ) or not self.hit_ceil_only_on_crit
+            if (rs["misses"] >= self.miss_ceil or rs["hits"] >= self.hit_ceil) and (
+                (self.hit_ceil_only_on_crit and canCrit)
+                or not self.hit_ceil_only_on_crit
             ):
                 finalHitMiss = True
             if rs["sum"] >= self.sum_ceil or rs["sum"] <= self.sum_floor:
@@ -594,8 +633,7 @@ class TokenBag:
                 rs["fortune-misses"] >= self.miss_ceil
                 or rs["fortune-hits"] >= self.hit_ceil
             ) and (
-                (self.hit_ceil_only_on_crit
-                    and canCrit)
+                (self.hit_ceil_only_on_crit and canCrit)
                 or not self.hit_ceil_only_on_crit
             ):
                 finalFlippedHitMiss = True
@@ -660,7 +698,7 @@ class TokenBag:
             ranks = {"draws": draw_halt, "ranks": []}
 
             for rank in range(self.max_rank + 1):
-                rs = self._pull(rank, copy.deepcopy(the_pull)[0:draw_halt])
+                rs = self._pull(rank, copy.deepcopy(the_pull)[0:draw_halt], False)
 
                 if self.sums:
                     del rs["hits"]
@@ -675,24 +713,73 @@ class TokenBag:
 
         return pulls
 
+    def resistance_pull(self) -> list:
+        """Evaluate a resistance pull from the bag(s)"""
+        # Get the replayable pull list.
+        # This handles "Return to Bag" abilities
+        the_pull = self._replayable_pull()
+
+        # Save our normal config and reset for resistance pulls
+        miss_ceil = self.miss_ceil
+        hit_ceil = self.hit_ceil
+        ignores_end = self.ignores_ends_draws
+        max_draws = self.max_draws
+        sums = self.sums
+        self.max_draws = 3
+        self.miss_ceil = 30
+        self.hit_ceil = 30
+        self.ignores_ends_draws = True
+        self.sums = False
+
+        pulls = []
+        for draw_halt in range(1, self.max_draws + 1):
+            ranks = {"draws": draw_halt, "ranks": []}
+
+            for rank in range(self.max_rank + 1):
+                rs = self._pull(rank, copy.deepcopy(the_pull)[0:draw_halt], True)
+
+                del rs["hits"]
+                del rs["misses"]
+                del rs["fortune-hits"]
+                del rs["fortune-misses"]
+                del rs["sum"]
+                del rs["fortune-sum"]
+                del rs["can-crit"]
+                del rs["crit"]
+                del rs["full"]
+                del rs["partial"]
+                del rs["failure"]
+                del rs["fortune-crit"]
+                del rs["fortune-full"]
+                del rs["fortune-partial"]
+                del rs["fortune-failure"]
+                del rs["fortune-pull-order"]
+
+                ranks["ranks"].append(copy.deepcopy(rs))
+            pulls.append(copy.deepcopy(ranks))
+
+        # Restore the base config
+        self.max_draws = max_draws
+        self.miss_ceil = miss_ceil
+        self.hit_ceil = hit_ceil
+        self.ignores_ends_draws = ignores_end
+        self.sums = sums
+
+        return pulls
+
     def _test_result(
-            self,
-            fail:bool,
-            partial:bool,
-            full:bool,
-            crit:bool,
-            test:str
+        self, fail: bool, partial: bool, full: bool, crit: bool, test: str
     ) -> tuple[bool, str]:
         """Evaluate a string test result against the pull result booleans"""
         actual = "_"
-        if crit:
+        if fail:
+            actual = "."
+        elif crit:
             actual = "^"
-        elif full:
-            actual = "+"
         elif partial:
             actual = "-"
-        elif fail:
-            actual = "."
+        elif full:
+            actual = "+"
 
         return (bool(test == actual), actual)
 
@@ -709,21 +796,21 @@ class TokenBag:
         }
 
         rank = int(test[0:1])
-        pSum = test.find('=')
-        pHit = test.find('&')
+        pSum = test.find("=")
+        pHit = test.find("&")
         tSum = ""
         tHit = ""
 
-        part = test.partition('=')
+        part = test.partition("=")
         if pSum > 0:
             # Sum is present
             if pHit > 0 and pSum > pHit:
                 # Hit is present 1st, Sum is 2nd
                 tSum = part[2]
-                tHit = part[0].partition('&')[2]
+                tHit = part[0].partition("&")[2]
             elif pHit > pSum:
                 # Hit is present 2nd, Sum is 1st
-                part2 = part[2].partition('&')
+                part2 = part[2].partition("&")
                 tSum = part2[0]
                 tHit = part2[2]
             else:
@@ -731,7 +818,7 @@ class TokenBag:
                 tSum = part[2]
         elif pHit > 0:
             # Hit is present, Sum is not
-            part = test.partition('&')
+            part = test.partition("&")
             tHit = part[2]
 
         if not tHit and not tSum:
@@ -743,8 +830,8 @@ class TokenBag:
             # evaluate sum test if present
             if tSum:
                 self.sums = True
-                rs = self._pull(rank, copy.deepcopy(pull))
-                tr = tSum.split('$')
+                rs = self._pull(rank, copy.deepcopy(pull), False)
+                tr = tSum.split("$")
                 if tr[0]:
                     # Base side, if given
                     results["Tests"] += 1
@@ -755,14 +842,15 @@ class TokenBag:
                         partial=rs["partial"],
                         full=rs["full"],
                         crit=rs["crit"],
-                        test=res
+                        test=res,
                     )
                     if val == rs["sum"] and match:
                         results["Valid"] += 1
                     else:
                         logger.debug(rs)
                         results["Failed"].append(
-                            f"{rank}={tr[0]}$;{rs['sum']}{pull_actual}$")
+                            f"{rank}={tr[0]}$;{rs['sum']}{pull_actual}$"
+                        )
                         logger.debug(results["Failed"][-1])
                 if len(tr) > 1 and tr[1]:
                     # Fortune side, if given
@@ -774,25 +862,26 @@ class TokenBag:
                         partial=rs["fortune-partial"],
                         full=rs["fortune-full"],
                         crit=rs["fortune-crit"],
-                        test=res
+                        test=res,
                     )
                     if val == rs["fortune-sum"] and match:
                         results["Valid"] += 1
                     else:
                         logger.debug(rs)
                         results["Failed"].append(
-                            f"{rank}=${tr[1]};${rs['fortune-sum']}{pull_actual}")
+                            f"{rank}=${tr[1]};${rs['fortune-sum']}{pull_actual}"
+                        )
                         logger.debug(results["Failed"][-1])
 
             # Evaluate hit/miss test if present
             if tHit:
                 self.sums = False
-                rs = self._pull(rank, copy.deepcopy(pull))
-                tr = tHit.split('$')
+                rs = self._pull(rank, copy.deepcopy(pull), False)
+                tr = tHit.split("$")
                 if tr[0]:
                     # Base side, if given
                     results["Tests"] += 1
-                    (hit, miss) = tr[0][:-1].split('/')
+                    (hit, miss) = tr[0][:-1].split("/")
                     hit = int(hit)
                     miss = int(miss)
                     res = tr[0][-1]
@@ -801,7 +890,7 @@ class TokenBag:
                         partial=rs["partial"],
                         full=rs["full"],
                         crit=rs["crit"],
-                        test=res
+                        test=res,
                     )
                     if hit == rs["hits"] and miss == rs["misses"] and match:
                         results["Valid"] += 1
@@ -815,7 +904,7 @@ class TokenBag:
                 if len(tr) > 1 and tr[1]:
                     # Fortune side, if given
                     results["Tests"] += 1
-                    (hit, miss) = tr[1][:-1].split('/')
+                    (hit, miss) = tr[1][:-1].split("/")
                     hit = int(hit)
                     miss = int(miss)
                     res = tr[1][-1]
@@ -824,12 +913,12 @@ class TokenBag:
                         partial=rs["fortune-partial"],
                         full=rs["fortune-full"],
                         crit=rs["fortune-crit"],
-                        test=res
+                        test=res,
                     )
                     if (
-                            hit == rs["fortune-hits"]
-                            and miss == rs["fortune-misses"]
-                            and match
+                        hit == rs["fortune-hits"]
+                        and miss == rs["fortune-misses"]
+                        and match
                     ):
                         results["Valid"] += 1
                     else:

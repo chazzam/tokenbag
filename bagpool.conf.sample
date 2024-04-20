@@ -1,212 +1,358 @@
 {
-   "Config": {
-      "bag_name": "Base",
-      "max_draws": 5,
-      "sums": false,
-      "hit_ceil": 3,
-      "hit_ceil_only_on_crit": false,
-      "hit_full": 2,
-      "hit_partial": 1,
-      "miss_ceil": 2,
-      "ranks": ["Unranked", "Bronze", "Silver", "Gold"],
-      "Comment": [
-         "Parameters defined here act as a default for all bags"
-      ]
-   },
-   "Bag Pool": {
-      "Opposed Bags": {
-         "Config": {
-            "max_draws": 4,
-            "bag_draws": [[0,1], [1,1]],
-            "Comment": [
-               "These parameters only affect this bag, if this bag is selected via 'bag_name'"
-            ]
-         },
-         "Specification": [
-            {
-               "Blank": 2,
-               "Hit": 2,
-               "Bronze": 2
+    "Config": {
+        "bag_name": "Base",
+        "max_draws": 5,
+        "sums": false,
+        "hit_ceil": 3,
+        "hit_ceil_only_on_crit": false,
+        "hit_full": 2,
+        "hit_partial": 1,
+        "miss_ceil": 2,
+        "ranks": [
+            "Unranked",
+            "Bronze",
+            "Silver",
+            "Gold"
+        ],
+        "Comment": [
+            "Parameters defined here act as a default for all bags"
+        ]
+    },
+    "Bag Pool": {
+        "Opposed Bags": {
+            "Config": {
+                "max_draws": 4,
+                "bag_draws": [
+                    [0, 1],
+                    [1, 1]
+                ],
+                "Comment": [
+                    "These parameters only affect this bag, if this bag is selected via 'bag_name'"
+                ]
             },
-            {
-               "Blank": 2,
-               "Miss": 2,
-               "Gobbler": 2
+            "Specification": [
+                {
+                    "Blank": 2,
+                    "Hit": 2,
+                    "Bronze": 2
+                },
+                {
+                    "Blank": 2,
+                    "Miss": 2,
+                    "Gobbler": 2
+                }
+            ]
+        },
+        "Base": {
+            "Config": {
+                "max_draws": 3
+            },
+            "Specification": [
+                {
+                    "Hit Red": 0,
+                    "Hit": 4,
+                    "Bronze Flip": 4,
+                    "Silver": 0,
+                    "Gold": 0,
+                    "Silver Flip": 2,
+                    "Gold Flip": 2,
+                    "Hit Bronze": 0,
+                    "Hit Silver": 0,
+                    "Hit Gold": 0,
+                    "Blank Bronze": 0,
+                    "Blank Silver": 0,
+                    "Blank Gold": 0,
+                    "Miss Blank": 0,
+                    "Blank Red": 4,
+                    "Miss": 3,
+                    "Miss Bronze": 1,
+                    "Miss Silver": 1,
+                    "Miss Gold": 1,
+                    "Gobbler": 0,
+                    "Gobstopper": 1,
+                    "Gobstopper Miss": 2
+                }
+            ]
+        }
+    },
+    "Token Pool": {
+        "Blank": {
+            "Sum Value": 0,
+            "Hit Value": 0,
+            "Can Be Stolen": false,
+            "Can Steal": false,
+            "Can Latch": false,
+            "Return to Bag": false,
+            "Min Rank": 0,
+            "Ends Draws": false,
+            "Can Flip": false,
+            "Flipped": {
+                "Can Flip": false
+            },
+            "Enable Crit": -4
+        },
+        "Hit": {
+            "Sum Value": 1,
+            "Hit Value": 1,
+            "Can Be Stolen": true
+        },
+        "Hit Red": {
+            "Sum Value": [-1, 1],
+            "Hit Value": [-1, 1],
+            "Can Be Stolen": true,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Can Be Stolen": false,
+                "Min Rank": 0
             }
-         ]
-      },
-      "Base": {
-         "Config": {
-            "max_draws": 3
-         },
-         "Specification": [
-            {
-               "Hit Red": 3,
-               "Bronze": 1,
-               "Silver": 1,
-               "Gold": 1,
-               "Miss": 4,
-               "Hit Bronze": 1,
-               "Hit Silver": 2,
-               "Hit Gold": 1,
-               "Miss Bronze": 1,
-               "Gobbler": 0,
-               "Gobstopper": 1
-            }
-         ]
-      }
-   },
-   "Token Pool": {
-      "Blank": {
-         "Sum Value": 0,
-         "Hit Value": 0,
-         "Can Be Stolen": false,
-         "Can Steal": false,
-         "Can Latch": false,
-         "Return to Bag": false,
-         "Min Rank": 0,
-         "Ends Draws": false,
-         "Can Flip": false,
-         "Flipped": {
-            "Can Flip": false
-         },
-         "Enable Crit": -1
-      },
-      "Hit": {
-         "Sum Value": 1,
-         "Hit Value": 1,
-         "Can Be Stolen": true
-      },
-      "Hit Red": {
-         "Sum Value": [
-            -1,
-            1
-         ],
-         "Hit Value": [
-            -1,
-            1
-         ],
-         "Can Be Stolen": true,
-         "Can Flip": true,
-         "Flipped": {
+        },
+        "Hit Bronze": {
             "Sum Value": 1,
             "Hit Value": 1,
             "Can Be Stolen": true,
-            "Min Rank": 0
-         }
-      },
-      "Hit Bronze": {
-         "Sum Value": 1,
-         "Hit Value": 1,
-         "Can Be Stolen": true,
-         "Can Flip": true,
-         "Flipped": {
-            "Can Be Stolen": false,
-            "Min Rank": 1
-         }
-      },
-      "Hit Silver": {
-         "Sum Value": 1,
-         "Hit Value": 1,
-         "Can Be Stolen": true,
-         "Can Flip": true,
-         "Flipped": {
-            "Sum Value": 2,
+            "Can Flip": true,
+            "Flipped": {
+                "Can Be Stolen": false,
+                "Min Rank": 1
+            }
+        },
+        "Hit Silver": {
+            "Sum Value": 1,
             "Hit Value": 1,
-            "Can Be Stolen": false,
-            "Min Rank": 2
-         }
-      },
-      "Hit Gold": {
-         "Sum Value": 1,
-         "Hit Value": 1,
-         "Can Be Stolen": true,
-         "Can Flip": true,
-         "Flipped": {
-            "Sum Value": 3,
-            "Hit Value": 2,
-            "Can Be Stolen": false,
-            "Min Rank": 3
-         }
-      },
-      "Bronze": {
-         "Sum Value": 1,
-         "Hit Value": 1,
-         "Min Rank": 1,
-         "Enable Crit":1
-      },
-      "Silver": {
-         "Sum Value": 2,
-         "Hit Value": 1,
-         "Min Rank": 2,
-         "Enable Crit":2
-      },
-      "Gold": {
-         "Sum Value": 3,
-         "Hit Value": 2,
-         "Min Rank": 3,
-         "Enable Crit":3
-      },
-      "Gobbler": {
-         "Sum Value": 0,
-         "Hit Value": 0,
-         "Can Steal": true,
-         "Return to Bag": true
-      },
-      "Gobstopper Bronze": {
-         "Sum Value": -2,
-         "Hit Value": -2,
-         "Ends Draws": true,
-         "Can Flip": true,
-         "Flipped": {
+            "Can Be Stolen": true,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 2,
+                "Hit Value": 1,
+                "Can Be Stolen": false,
+                "Min Rank": 2
+            }
+        },
+        "Hit Gold": {
+            "Sum Value": 1,
+            "Hit Value": 1,
+            "Can Be Stolen": true,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 3,
+                "Hit Value": 2,
+                "Can Be Stolen": false,
+                "Min Rank": 3
+            }
+        },
+        "Bronze": {
             "Sum Value": 1,
             "Hit Value": 1,
             "Min Rank": 1,
-            "Ends Draws": false
-         }
-      },
-      "Gobstopper": {
-         "Sum Value": -2,
-         "Hit Value": -2,
-         "Ends Draws": true
-      },
-      "Miss Gold": {
-         "Sum Value": -1,
-         "Hit Value": -1,
-         "Can Flip": true,
-         "Flipped": {
-            "Sum Value": 3,
-            "Hit Value": 2,
-            "Min Rank": 3
-         }
-      },
-      "Miss Silver": {
-         "Sum Value": -1,
-         "Hit Value": -1,
-         "Can Flip": true,
-         "Flipped": {
+            "Enable Crit": 1
+        },
+        "Silver": {
             "Sum Value": 2,
             "Hit Value": 1,
-            "Min Rank": 2
-         }
-      },
-      "Miss Bronze": {
-         "Sum Value": -1,
-         "Hit Value": -1,
-         "Can Flip": true,
-         "Flipped": {
+            "Min Rank": 2,
+            "Enable Crit": 2
+        },
+        "Gold": {
+            "Sum Value": 3,
+            "Hit Value": 1,
+            "Min Rank": 3,
+            "Enable Crit": 3
+        },
+        "Gobbler": {
+            "Sum Value": 0,
+            "Hit Value": 0,
+            "Can Steal": true
+        },
+        "Gobstopper Bronze": {
+            "Sum Value": -2,
+            "Hit Value": -2,
+            "Ends Draws": true,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Min Rank": 1,
+                "Ends Draws": false
+            }
+        },
+        "Gobstopper": {
+            "Sum Value": -2,
+            "Hit Value": -2,
+            "Ends Draws": true
+        },
+        "Miss Gold": {
+            "Hit Value": [-1, -1, -1, 1],
+            "Min Rank": 0,
+            "Can Flip": false
+        },
+        "Miss Silver": {
+            "Hit Value": [-1, -1, 1],
+            "Min Rank": 0,
+            "Can Flip": false
+        },
+        "Miss Bronze": {
+            "Hit Value": [-1, 1],
+            "Min Rank": 0,
+            "Can Flip": false
+        },
+        "Miss Special": {
+            "Sum Value": -1,
+            "Hit Value": -1
+        },
+        "Miss": {
+            "Sum Value": -1,
+            "Hit Value": -1
+        },
+        "Blank Bronze": {
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Can Be Stolen": false,
+                "Min Rank": 1
+            }
+        },
+        "Blank Silver": {
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Can Be Stolen": false,
+                "Min Rank": 2
+            }
+        },
+        "Blank Gold": {
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 3,
+                "Hit Value": 1,
+                "Can Be Stolen": false,
+                "Min Rank": 3
+            }
+        },
+        "Miss Hit": {
+            "Sum Value": -1,
+            "Hit Value": -1,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Min Rank": 0
+            }
+        },
+        "Miss Blank": {
+            "Sum Value": -1,
+            "Hit Value": -1,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 0,
+                "Hit Value": 0,
+                "Min Rank": 0
+            }
+        },
+        "Bronze Flip": {
             "Sum Value": 1,
             "Hit Value": 1,
-            "Min Rank": 1
-         }
-      },
-      "Miss Special": {
-         "Sum Value": -1,
-         "Hit Value": -1
-      },
-      "Miss": {
-         "Sum Value": -1,
-         "Hit Value": -1
-      }
-   }
+            "Min Rank": 1,
+            "Enable Crit": 1,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Min Rank": 0
+            }
+        },
+        "Silver Flip": {
+            "Sum Value": 2,
+            "Hit Value": 1,
+            "Min Rank": 2,
+            "Enable Crit": 2,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Min Rank": 1
+            }
+        },
+        "Gold Flip": {
+            "Sum Value": 3,
+            "Hit Value": 1,
+            "Min Rank": 3,
+            "Enable Crit": 3,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Min Rank": 2
+            }
+        },
+        "Blank Hit": {
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 1,
+                "Can Be Stolen": true,
+                "Min Rank": 0
+            }
+        },
+        "Gobstopper Miss": {
+            "Sum Value": -2,
+            "Hit Value": -2,
+            "Ends Draws": true,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": -1,
+                "Min Rank": 0,
+                "Ends Draws": false
+            }
+        },
+        "Blank Red": {
+            "Sum Value": [-1, 0],
+            "Hit Value": [-1, 0],
+            "Can Be Stolen": true,
+            "Can Flip": true,
+            "Flipped": {
+                "Sum Value": 1,
+                "Hit Value": 0,
+                "Can Be Stolen": false,
+                "Min Rank": 0
+            }
+        }
+    },
+    "Test Pulls": [
+        {
+            "Config": {},
+            "Pull": [
+                "Hit Red",
+                "Miss Bronze",
+                "Gold"
+            ],
+            "Tests": [
+                "0=-2.$0-&0/2.$1/1-",
+                "1= 2+$2+&2/0+$2/0+",
+                "2= 2+$2+&2/0+$2/0+",
+                "3= 5^$5^&3/0^$3/0^"
+            ],
+            "Comment": [
+                "Something about Hit Red for rank 0 doesn't seem to be working right",
+                "Fortune-sum is always 0"
+            ]
+        },
+        {
+            "Pull": [
+                "Hit Silver",
+                "Bronze",
+                "Gobbler"
+            ],
+            "Tests": [
+                "0=0-$0-&0/0.$0/0.",
+                "1=1-$1-&1/0-$1/0-",
+                "2=1-$3+&1/0-$2/0+",
+                "3=1-$3+&1/0-$2/0+"
+            ]
+        }
+    ]
 }

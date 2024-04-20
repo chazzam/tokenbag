@@ -30,3 +30,7 @@ A Sum test definition begins with '=' (equal sign) and could look like this: `=-
 ### Hit/Miss Test Specification
 
 A Hit/Miss test definition begins with '&' (ampersand), specifies the Hits / Misses Result, and could look like this: `& 3/1+ $ 4/0^`. This specifies that the basic result would have three hits and one miss, resulting in a Full Success. The fortune result would have four hits and no misses, resulting in a Critical Success.
+
+### Test Validation
+
+The output of a test result will have the initial test specification followed the actual computed result, separated by a semicolon. For example, a rank 0 test that predicted a fortune sum of 0, but computed a fortune sum of 1 could be "0=$0-;$1-".
