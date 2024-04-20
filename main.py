@@ -282,14 +282,14 @@ def main():
             if not args.print_rank_numbers:
                 name = pool.get_rank_name(rank)
             print(
-                f"{name:>10}:"
+                f"{name:>14}:"
                 f" {stats['costs']['mitigated']:>3}+"
                 f" {stats['costs']['taken']:>3}~"
                 f" {stats['costs']['lost']:>3}$"
             )
         name = "Totals"
         print(
-            f"\n{name:>10}:"
+            f"\n{name:>14}:"
             f" {total_stats['costs']['mitigated']:>3}+"
             f" {total_stats['costs']['taken']:>3}~"
             f" {total_stats['costs']['lost']:>3}$"

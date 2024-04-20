@@ -479,8 +479,9 @@ class TokenBag:
                 if not baseDrawEnded and not finalHitMiss:
                     rs["hits"] += bHit
                     rs["misses"] += bMiss
-                    rs["costs"]["mitigated"] += int(bHit / bHit) if bHit > 0 else 0
-                    rs["costs"]["taken"] += int(bMiss / bMiss) if bMiss > 0 else 0
+                    if not fortuneLost:
+                        rs["costs"]["mitigated"] += int(bHit / bHit) if bHit > 0 else 0
+                        rs["costs"]["taken"] += int(bMiss / bMiss) if bMiss > 0 else 0
                 if not baseDrawEnded and not finalSum:
                     rs["sum"] += bSum
 
