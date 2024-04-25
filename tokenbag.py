@@ -10,9 +10,9 @@ from enum import Enum
 
 
 class PullType(Enum):
-    Skill = 1
+    Action = 1
     Resistance = 2
-    Information = 3
+    Befell = 3
 
 
 class TokenBag:
@@ -763,7 +763,7 @@ class TokenBag:
 
         return pulls
 
-    def pull_one(self, rank: int, type: PullType) -> dict:
+    def pull_one(self, rank: int, type: PullType) -> list:
         """Evaluate a pull from the bag(s)"""
         # Get the replayable pull list.
         # This handles "Return to Bag" abilities
@@ -778,41 +778,69 @@ class TokenBag:
         sums = copy.deepcopy(self.sums)
 
         do_resistance = False
-        if type == PullType.Resistance or type == PullType.Information:
-            do_resistance = True
+        if type != PullType.Action:
             self.max_draws = 3
             self.miss_ceil = 30
             self.hit_ceil = 30
             self.ignores_ends_draws = True
             self.sums = False
-        rs = self._pull(rank, self._replayable_pull(), do_resistance)
+        if type == PullType.Resistance:
+            do_resistance = True
 
-        if type != PullType.Resistance:
-            if self.sums:
+        pulls = []
+        if type != PullType.Action:
+            rs = self._pull(rank, self._replayable_pull(), do_resistance)
+            if type == PullType.Resistance:
+                # Resistance, only counts Costs
                 del rs["hits"]
                 del rs["misses"]
                 del rs["fortune-hits"]
                 del rs["fortune-misses"]
-            else:
                 del rs["sum"]
                 del rs["fortune-sum"]
+                del rs["can-crit"]
+                del rs["crit"]
+                del rs["full"]
+                del rs["partial"]
+                del rs["failure"]
+                del rs["fortune-crit"]
+                del rs["fortune-full"]
+                del rs["fortune-partial"]
+                del rs["fortune-failure"]
+                del rs["fortune-pull-order"]
+            else:
+                # Befell, only counts Hits
+                del rs["sum"]
+                del rs["misses"]
+                del rs["can-crit"]
+                del rs["crit"]
+                del rs["full"]
+                del rs["partial"]
+                del rs["failure"]
+                del rs["fortune-sum"]
+                del rs["fortune-misses"]
+                del rs["fortune-hits"]
+                del rs["fortune-crit"]
+                del rs["fortune-full"]
+                del rs["fortune-partial"]
+                del rs["fortune-failure"]
+                del rs["fortune-pull-order"]
+                del rs['costs']
+            pulls.append(rs)
         else:
-            del rs["hits"]
-            del rs["misses"]
-            del rs["fortune-hits"]
-            del rs["fortune-misses"]
-            del rs["sum"]
-            del rs["fortune-sum"]
-            del rs["can-crit"]
-            del rs["crit"]
-            del rs["full"]
-            del rs["partial"]
-            del rs["failure"]
-            del rs["fortune-crit"]
-            del rs["fortune-full"]
-            del rs["fortune-partial"]
-            del rs["fortune-failure"]
-            del rs["fortune-pull-order"]
+            replayable_pull = self._replayable_pull()
+            # Action, need to be able to stop at any point
+            for i in range(1, self.max_draws + 1):
+                rs = self._pull(
+                    rank,
+                    copy.deepcopy(replayable_pull)[0:i],
+                    False)
+                # Action, Uses Hits/Misses, the results, and
+                # their Fortune variants currently
+                del rs["sum"]
+                del rs["fortune-sum"]
+                del rs['costs']
+                pulls.append(rs)
 
         # Restore the base config
         self.max_draws = copy.deepcopy(max_draws)
@@ -821,7 +849,7 @@ class TokenBag:
         self.ignores_ends_draws = copy.deepcopy(ignores_end)
         self.sums = copy.deepcopy(sums)
 
-        return rs
+        return pulls
 
     def resistance_pull(self) -> list:
         """Evaluate a resistance pull from the bag(s)"""
